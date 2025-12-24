@@ -191,16 +191,24 @@ const DocumentViewer = () => {
               <i className="bi bi-file-earmark-pdf display-1 text-muted mb-4"></i>
               <h3 className="h5 fw-medium mb-3">PDF Viewer</h3>
               <p className="text-muted mb-4">
-                Click below to open the PDF in your browser.
+                Select the PDF file from your computer to view it here.
               </p>
-              <Button
-                variant="primary"
-                href={`/api/documents/${id}/file?token=${localStorage.getItem('token')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Open PDF in New Tab
-              </Button>
+              <Form.Group className="mb-3">
+                <Form.Control
+                  type="file"
+                  accept=".pdf"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const fileURL = URL.createObjectURL(file);
+                      window.open(fileURL, '_blank');
+                    }
+                  }}
+                />
+              </Form.Group>
+              <p className="small text-muted">
+                The PDF opens in your browser - nothing is uploaded to the server.
+              </p>
             </div>
           )}
 
