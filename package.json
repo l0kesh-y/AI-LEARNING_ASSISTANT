@@ -12,8 +12,7 @@
     "client": "cd client && npm start",
     "build": "cd client && npm install && npm run build",
     "start": "node server.js",
-    "install-all": "npm install && cd client && npm install",
-    "postinstall": "cd client && npm install && npm run build"
+    "install-all": "npm install && cd client && npm install"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
