@@ -191,16 +191,11 @@ const DocumentViewer = () => {
               <i className="bi bi-file-earmark-pdf display-1 text-muted mb-4"></i>
               <h3 className="h5 fw-medium mb-3">PDF Viewer</h3>
               <p className="text-muted mb-4">
-                PDF viewing functionality would be implemented here using react-pdf or similar library.
+                Use the AI Chat tab to ask questions about this document, or generate a Summary.
               </p>
-              <Button
-                variant="primary"
-                href={`/api/documents/${id}/file?token=${localStorage.getItem('token')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Open PDF in New Tab
-              </Button>
+              <p className="small text-muted">
+                Note: PDF files are processed for AI features but not stored for direct viewing on free hosting.
+              </p>
             </div>
           )}
 
