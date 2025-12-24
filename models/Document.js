@@ -30,6 +30,10 @@ const documentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  pdfData: {
+    type: String,
+    default: ''
+  },
   summary: {
     type: String,
     default: ''

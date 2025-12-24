@@ -50,6 +50,9 @@ router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
     const pdfBuffer = fs.readFileSync(req.file.path);
     const pdfData = await pdfParse(pdfBuffer);
     
+    // Convert PDF to base64 for storage
+    const pdfBase64 = pdfBuffer.toString('base64');
+    
     // Create document record
     const document = new Document({
       title: title || req.file.originalname.replace('.pdf', ''),
@@ -59,6 +62,7 @@ router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
       content: pdfData.text,
+      pdfData: pdfBase64,
       pageCount: pdfData.numpages,
       user: req.userId,
       tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
@@ -66,6 +70,11 @@ router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
     });
 
     await document.save();
+    
+    // Clean up local file after saving to DB
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
 
     res.status(201).json({
       message: 'Document uploaded successfully',
@@ -201,7 +210,7 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// Serve PDF file (with token in query for new tab access)
+// Serve PDF file from database
 router.get('/:id/file', async (req, res) => {
   try {
     // Check for token in header or query parameter
@@ -224,15 +233,18 @@ router.get('/:id/file', async (req, res) => {
       return res.status(404).json({ message: 'Document not found' });
     }
 
-    if (!fs.existsSync(document.filePath)) {
-      return res.status(404).json({ message: 'File not found' });
+    if (!document.pdfData) {
+      return res.status(404).json({ message: 'PDF data not available' });
     }
+
+    // Convert base64 back to buffer
+    const pdfBuffer = Buffer.from(document.pdfData, 'base64');
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${document.originalName}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
     
-    const fileStream = fs.createReadStream(document.filePath);
-    fileStream.pipe(res);
+    res.send(pdfBuffer);
   } catch (error) {
     console.error('Serve file error:', error);
     res.status(500).json({ message: 'Server error' });

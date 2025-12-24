@@ -191,11 +191,16 @@ const DocumentViewer = () => {
               <i className="bi bi-file-earmark-pdf display-1 text-muted mb-4"></i>
               <h3 className="h5 fw-medium mb-3">PDF Viewer</h3>
               <p className="text-muted mb-4">
-                Use the AI Chat tab to ask questions about this document, or generate a Summary.
+                Click below to open the PDF in your browser.
               </p>
-              <p className="small text-muted">
-                Note: PDF files are processed for AI features but not stored for direct viewing on free hosting.
-              </p>
+              <Button
+                variant="primary"
+                href={`/api/documents/${id}/file?token=${localStorage.getItem('token')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open PDF in New Tab
+              </Button>
             </div>
           )}
 
