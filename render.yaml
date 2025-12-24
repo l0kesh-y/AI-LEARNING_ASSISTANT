@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: ai-learning-assistant
+    env: node
+    plan: free
+    buildCommand: npm install && cd client && npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GROQ_API_KEY
+        sync: false
+      - key: MONGODB_URI
+        sync: false
