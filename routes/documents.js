@@ -201,12 +201,23 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// Serve PDF file
-router.get('/:id/file', auth, async (req, res) => {
+// Serve PDF file (with token in query for new tab access)
+router.get('/:id/file', async (req, res) => {
   try {
+    // Check for token in header or query parameter
+    const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token, authorization denied' });
+    }
+
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const userId = decoded.userId;
+
     const document = await Document.findOne({
       _id: req.params.id,
-      user: req.userId
+      user: userId
     });
 
     if (!document) {

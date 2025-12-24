@@ -195,7 +195,7 @@ const DocumentViewer = () => {
               </p>
               <Button
                 variant="primary"
-                href={`/api/documents/${id}/file`}
+                href={`/api/documents/${id}/file?token=${localStorage.getItem('token')}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
