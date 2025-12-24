@@ -177,3 +177,43 @@ code {
   border-color: #dc3545;
   background-color: #f8d7da;
 }
+
+
+/* Markdown styling in chat */
+.bg-light p {
+  margin-bottom: 0.5rem;
+}
+
+.bg-light p:last-child {
+  margin-bottom: 0;
+}
+
+.bg-light ul, .bg-light ol {
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+}
+
+.bg-light h1, .bg-light h2, .bg-light h3, .bg-light h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.bg-light code {
+  background-color: #e9ecef;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.bg-light pre {
+  background-color: #e9ecef;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  overflow-x: auto;
+}
+
+.bg-light strong {
+  font-weight: 600;
+}

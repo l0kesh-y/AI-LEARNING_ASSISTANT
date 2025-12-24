@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
 import { Container, Row, Col, Card, Button, Nav, Form, InputGroup } from 'react-bootstrap';
 
 const DocumentViewer = () => {
@@ -194,7 +195,7 @@ const DocumentViewer = () => {
               </p>
               <Button
                 variant="primary"
-                href={`http://localhost:5000/api/documents/${id}/file`}
+                href={`/api/documents/${id}/file`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -226,7 +227,11 @@ const DocumentViewer = () => {
                           }`}
                           style={{ maxWidth: '70%' }}
                         >
-                          {message.content}
+                          {message.role === 'user' ? (
+                            message.content
+                          ) : (
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -276,8 +281,8 @@ const DocumentViewer = () => {
               {summary ? (
                 <div>
                   <h3 className="h5 fw-semibold mb-4">Document Summary</h3>
-                  <div className="text-muted" style={{ whiteSpace: 'pre-wrap' }}>
-                    {summary}
+                  <div className="text-muted">
+                    <ReactMarkdown>{summary}</ReactMarkdown>
                   </div>
                 </div>
               ) : (
