@@ -189,25 +189,9 @@ const DocumentViewer = () => {
           {activeTab === 'viewer' && (
             <div className="text-center py-5">
               <i className="bi bi-file-earmark-pdf display-1 text-muted mb-4"></i>
-              <h3 className="h5 fw-medium mb-3">PDF Viewer</h3>
+              <h3 className="h5 fw-medium mb-3">Document Content</h3>
               <p className="text-muted mb-4">
-                Select the PDF file from your computer to view it here.
-              </p>
-              <Form.Group className="mb-3">
-                <Form.Control
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      const fileURL = URL.createObjectURL(file);
-                      window.open(fileURL, '_blank');
-                    }
-                  }}
-                />
-              </Form.Group>
-              <p className="small text-muted">
-                The PDF opens in your browser - nothing is uploaded to the server.
+                Use the AI Chat to ask questions about this document, or generate a Summary, Flashcards, or Quiz.
               </p>
             </div>
           )}
