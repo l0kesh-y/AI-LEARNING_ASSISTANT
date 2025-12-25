@@ -41,7 +41,7 @@ git push -u origin main
    | Key | Value |
    |-----|-------|
    | `NODE_ENV` | `production` |
-   | `MONGODB_URI` | `mongodb+srv://ailearning:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/ai-learning?retryWrites=true&w=majority` |
+   | `MONGODB_URI` | `mongodb` |
    | `JWT_SECRET` | `your-super-secret-jwt-key-make-it-long-and-random` |
    | `GROQ_API_KEY` | `your-groq-api-key-here` |
 
@@ -56,7 +56,7 @@ git push -u origin main
 
 ```
 NODE_ENV=production
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/ai-learning?retryWrites=true&w=majority
+MONGODB_URI=mongodb
 JWT_SECRET=make-this-a-very-long-random-string-for-security
 GROQ_API_KEY=gsk_your_groq_api_key_here
 ```
