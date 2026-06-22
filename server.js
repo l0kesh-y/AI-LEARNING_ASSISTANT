@@ -22,6 +22,7 @@ app.use('/api/ai', require('./routes/ai'));
 app.use('/api/flashcards', require('./routes/flashcards'));
 app.use('/api/quizzes', require('./routes/quizzes'));
 app.use('/api/progress', require('./routes/progress'));
+app.use('/api/revision', require('./routes/revision'));
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/ai-learning-assistant', {

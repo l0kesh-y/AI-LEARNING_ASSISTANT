@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Form, Modal, Badge, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Form, Modal, Badge, Spinner, Alert } from 'react-bootstrap';
 import axios from 'axios';
 import {
   DocumentTextIcon,
@@ -19,13 +19,16 @@ const Documents = () => {
   const [uploading, setUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState({ uploadLimit: 5, currentCount: 0, remaining: 5 });
 
   const fetchDocuments = useCallback(async () => {
     try {
-      const response = await axios.get('/documents', {
-        params: { search: searchTerm }
-      });
-      setDocuments(response.data.documents);
+      const [docsRes, statusRes] = await Promise.all([
+        axios.get('/documents', { params: { search: searchTerm } }),
+        axios.get('/documents/upload-status')
+      ]);
+      setDocuments(docsRes.data.documents);
+      setUploadStatus(statusRes.data);
     } catch (error) {
       console.error('Failed to fetch documents:', error);
     } finally {
@@ -54,7 +57,8 @@ const Documents = () => {
       fetchDocuments();
     } catch (error) {
       console.error('Upload failed:', error);
-      alert('Upload failed. Please try again.');
+      const msg = error.response?.data?.message || 'Upload failed. Please try again.';
+      alert(msg);
     } finally {
       setUploading(false);
     }
@@ -108,17 +112,48 @@ const Documents = () => {
               <h1 className="h2 fw-bold text-dark mb-1">Documents</h1>
               <p className="text-muted mb-0">Upload and manage your study materials</p>
             </div>
-            <Button
-              variant="primary"
-              onClick={() => setShowUploadModal(true)}
-              className="d-flex align-items-center"
-            >
-              <PlusIcon className="me-2" style={{ width: '20px', height: '20px' }} />
-              Upload PDF
-            </Button>
+            <div className="d-flex align-items-center gap-3">
+              <div className="text-end">
+                <div className="small text-muted">Upload limit</div>
+                <div className="d-flex align-items-center gap-1">
+                  {Array.from({ length: uploadStatus.uploadLimit }).map((_, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: 10, height: 10, borderRadius: '50%',
+                        backgroundColor: i < uploadStatus.currentCount ? '#0d6efd' : '#dee2e6'
+                      }}
+                    />
+                  ))}
+                  <span className="small text-muted ms-1">
+                    {uploadStatus.currentCount}/{uploadStatus.uploadLimit}
+                  </span>
+                </div>
+              </div>
+              <Button
+                variant="primary"
+                onClick={() => setShowUploadModal(true)}
+                className="d-flex align-items-center"
+                disabled={uploadStatus.remaining === 0}
+              >
+                <PlusIcon className="me-2" style={{ width: '20px', height: '20px' }} />
+                Upload PDF
+              </Button>
+            </div>
           </div>
         </Col>
       </Row>
+
+      {/* Upload limit warning */}
+      {uploadStatus.remaining === 0 && (
+        <Row className="mb-3">
+          <Col>
+            <Alert variant="warning" className="mb-0">
+              You have reached your upload limit of {uploadStatus.uploadLimit} PDFs. Delete a document to upload a new one.
+            </Alert>
+          </Col>
+        </Row>
+      )}
 
       {/* Search */}
       <Row className="mb-4">

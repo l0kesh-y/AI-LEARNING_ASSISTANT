@@ -37,11 +37,35 @@ const upload = multer({
   }
 });
 
+// Get upload limit status for the current user
+router.get('/upload-status', auth, async (req, res) => {
+  try {
+    const uploadLimit = parseInt(process.env.PDF_UPLOAD_LIMIT) || 5;
+    const currentCount = await Document.countDocuments({ user: req.userId });
+    res.json({ uploadLimit, currentCount, remaining: Math.max(uploadLimit - currentCount, 0) });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Upload and process PDF
 router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    // Enforce per-user upload limit
+    const uploadLimit = parseInt(process.env.PDF_UPLOAD_LIMIT) || 5;
+    const existingCount = await Document.countDocuments({ user: req.userId });
+    if (existingCount >= uploadLimit) {
+      // Clean up the uploaded temp file
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      return res.status(403).json({
+        message: `Upload limit reached. You can upload a maximum of ${uploadLimit} PDFs. Delete an existing document to upload a new one.`,
+        uploadLimit,
+        currentCount: existingCount
+      });
     }
 
     const { title, tags } = req.body;

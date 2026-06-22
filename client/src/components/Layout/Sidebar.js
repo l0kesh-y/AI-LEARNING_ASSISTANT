@@ -6,7 +6,8 @@ import {
   DocumentTextIcon,
   AcademicCapIcon,
   QuestionMarkCircleIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  BookOpenIcon
 } from '@heroicons/react/24/outline';
 
 const Sidebar = () => {
@@ -15,6 +16,7 @@ const Sidebar = () => {
     { name: 'Documents', href: '/documents', icon: DocumentTextIcon },
     { name: 'Flashcards', href: '/flashcards', icon: AcademicCapIcon },
     { name: 'Quizzes', href: '/quizzes', icon: QuestionMarkCircleIcon },
+    { name: 'Revision', href: '/revision', icon: BookOpenIcon },
     { name: 'Progress', href: '/progress', icon: ChartBarIcon },
   ];
 

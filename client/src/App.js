@@ -12,6 +12,7 @@ import Flashcards from './pages/Flashcards/Flashcards';
 import Quizzes from './pages/Quizzes/Quizzes';
 import QuizTaker from './pages/Quizzes/QuizTaker';
 import Progress from './pages/Progress/Progress';
+import Revision from './pages/Revision/Revision';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -55,6 +56,7 @@ function AppContent() {
               <Route path="/quizzes" element={<Quizzes />} />
               <Route path="/quiz/:id" element={<QuizTaker />} />
               <Route path="/progress" element={<Progress />} />
+              <Route path="/revision" element={<Revision />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>
