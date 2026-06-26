@@ -12,12 +12,12 @@ import {
 
 const Sidebar = () => {
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: HomeIcon },
-    { name: 'Documents', href: '/documents', icon: DocumentTextIcon },
-    { name: 'Flashcards', href: '/flashcards', icon: AcademicCapIcon },
-    { name: 'Quizzes', href: '/quizzes', icon: QuestionMarkCircleIcon },
-    { name: 'Revision', href: '/revision', icon: BookOpenIcon },
-    { name: 'Progress', href: '/progress', icon: ChartBarIcon },
+    { name: 'Dashboard',   href: '/',          icon: HomeIcon },
+    { name: 'Documents',   href: '/documents', icon: DocumentTextIcon },
+    { name: 'Flashcards',  href: '/flashcards', icon: AcademicCapIcon },
+    { name: 'Quizzes',     href: '/quizzes',   icon: QuestionMarkCircleIcon },
+    { name: 'Revision',    href: '/revision',  icon: BookOpenIcon },
+    { name: 'Progress',    href: '/progress',  icon: ChartBarIcon },
   ];
 
   return (

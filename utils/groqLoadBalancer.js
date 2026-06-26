@@ -14,13 +14,13 @@ class GroqLoadBalancer {
     this.failureCounts = new Map();
     this.lastReset = Date.now();
     this.RESET_INTERVAL_MS = 60 * 1000; // reset failure counts every 60s
-    this.MAX_FAILURES = 3;
+    this.MAX_FAILURES = 5;
 
     if (this.keys.length === 0) {
       throw new Error('No GROQ_API_KEY environment variables found.');
     }
 
-    console.log(`[GroqLB] Initialized with ${this.keys.length} API key(s).`);
+    console.log(`[GroqLB] Initialized with ${this.keys.length} API key(s). Keys: ${this.keys.map((k, i) => `#${i+1}(${k.substring(0,8)}...)`).join(', ')}`);
   }
 
   _loadKeys() {
@@ -78,6 +78,15 @@ class GroqLoadBalancer {
    * Proxy for groq.chat.completions.create with automatic retry on different keys.
    */
   async createCompletion(params, retries = 0) {
+    const maxRetries = this.clients.length;
+    if (retries >= maxRetries) {
+      // Full reset and one last attempt with key 0
+      this.failedKeys.clear();
+      this.failureCounts.clear();
+      this.currentIndex = 0;
+      console.warn('[GroqLB] All keys failed, forcing reset and retrying with key #1.');
+    }
+
     const index = this._getNextIndex();
     const client = this.clients[index];
 
@@ -91,11 +100,9 @@ class GroqLoadBalancer {
       if (isRateLimit || isAuth) {
         this._markFailure(index);
         console.warn(`[GroqLB] Key #${index + 1} error (${err.status}), trying next key.`);
-      }
-
-      const availableKeys = this.clients.length - this.failedKeys.size;
-      if (retries < availableKeys && availableKeys > 0) {
-        return this.createCompletion(params, retries + 1);
+        if (retries < maxRetries) {
+          return this.createCompletion(params, retries + 1);
+        }
       }
 
       throw err;
@@ -120,4 +127,7 @@ const getGroqClient = () => {
   return instance;
 };
 
-module.exports = { getGroqClient };
+// Allow forced reset (e.g. after config change)
+const resetGroqClient = () => { instance = null; };
+
+module.exports = { getGroqClient, resetGroqClient };

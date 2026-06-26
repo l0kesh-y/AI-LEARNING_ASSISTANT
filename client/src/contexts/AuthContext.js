@@ -99,13 +99,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      await axios.put('/auth/change-password', { currentPassword, newPassword });
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Password change failed'
+      };
+    }
+  };
+
   const value = {
     user,
     loading,
     login,
     register,
     logout,
-    updateProfile
+    updateProfile,
+    changePassword
   };
 
   return (

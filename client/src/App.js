@@ -13,6 +13,7 @@ import Quizzes from './pages/Quizzes/Quizzes';
 import QuizTaker from './pages/Quizzes/QuizTaker';
 import Progress from './pages/Progress/Progress';
 import Revision from './pages/Revision/Revision';
+import Settings from './pages/Settings/Settings';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -57,6 +58,7 @@ function AppContent() {
               <Route path="/quiz/:id" element={<QuizTaker />} />
               <Route path="/progress" element={<Progress />} />
               <Route path="/revision" element={<Revision />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>
