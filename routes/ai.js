@@ -3,6 +3,7 @@ const { getGroqClient } = require('../utils/groqLoadBalancer');
 const Document = require('../models/Document');
 const ChatHistory = require('../models/ChatHistory');
 const auth = require('../middleware/auth');
+const { cacheMiddleware } = require('../utils/cache');
 
 const router = express.Router();
 
@@ -123,9 +124,11 @@ router.post('/explain/:documentId', auth, async (req, res) => {
 });
 
 // Get chat history for document
-router.get('/chat-history/:documentId', auth, async (req, res) => {
+router.get('/chat-history/:documentId', auth, cacheMiddleware(30), async (req, res) => {
   try {
-    const chatHistories = await ChatHistory.find({ user: req.userId, document: req.params.documentId }).sort({ updatedAt: -1 });
+    const chatHistories = await ChatHistory.find({ user: req.userId, document: req.params.documentId })
+      .sort({ updatedAt: -1 })
+      .lean();
     res.json(chatHistories);
   } catch (error) {
     console.error('Get chat history error:', error);
@@ -134,9 +137,11 @@ router.get('/chat-history/:documentId', auth, async (req, res) => {
 });
 
 // Get specific chat
-router.get('/chat/:chatId', auth, async (req, res) => {
+router.get('/chat/:chatId', auth, cacheMiddleware(30), async (req, res) => {
   try {
-    const chat = await ChatHistory.findOne({ _id: req.params.chatId, user: req.userId }).populate('document', 'title');
+    const chat = await ChatHistory.findOne({ _id: req.params.chatId, user: req.userId })
+      .populate('document', 'title')
+      .lean();
     if (!chat) return res.status(404).json({ message: 'Chat not found' });
     res.json(chat);
   } catch (error) {

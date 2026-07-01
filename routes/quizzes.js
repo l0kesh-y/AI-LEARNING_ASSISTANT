@@ -3,6 +3,7 @@ const { getGroqClient } = require('../utils/groqLoadBalancer');
 const { Quiz, QuizAttempt } = require('../models/Quiz');
 const Document = require('../models/Document');
 const auth = require('../middleware/auth');
+const { cacheMiddleware, invalidateUser } = require('../utils/cache');
 
 const router = express.Router();
 
@@ -53,6 +54,8 @@ router.post('/generate/:documentId', auth, async (req, res) => {
     });
 
     await quiz.save();
+    invalidateUser('quizzes', req.userId);
+    invalidateUser('dashboard', req.userId);
     res.json({ message: 'Quiz generated successfully', quiz });
   } catch (error) {
     console.error('Generate quiz error:', error);
@@ -61,9 +64,11 @@ router.post('/generate/:documentId', auth, async (req, res) => {
 });
 
 // Get all quizzes for a document
-router.get('/document/:documentId', auth, async (req, res) => {
+router.get('/document/:documentId', auth, cacheMiddleware(30), async (req, res) => {
   try {
-    const quizzes = await Quiz.find({ document: req.params.documentId, user: req.userId }).sort({ createdAt: -1 });
+    const quizzes = await Quiz.find({ document: req.params.documentId, user: req.userId })
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(quizzes);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -71,12 +76,13 @@ router.get('/document/:documentId', auth, async (req, res) => {
 });
 
 // Get all user quizzes (must be before /:id)
-router.get('/attempts/all', auth, async (req, res) => {
+router.get('/attempts/all', auth, cacheMiddleware(30), async (req, res) => {
   try {
     const attempts = await QuizAttempt.find({ user: req.userId })
       .sort({ createdAt: -1 })
       .populate('quiz', 'title')
-      .limit(50);
+      .limit(50)
+      .lean();
     res.json(attempts);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -84,9 +90,12 @@ router.get('/attempts/all', auth, async (req, res) => {
 });
 
 // Get all user quizzes
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, cacheMiddleware(30), async (req, res) => {
   try {
-    const quizzes = await Quiz.find({ user: req.userId }).sort({ createdAt: -1 }).populate('document', 'title');
+    const quizzes = await Quiz.find({ user: req.userId })
+      .sort({ createdAt: -1 })
+      .populate('document', 'title')
+      .lean();
     res.json(quizzes);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -94,9 +103,11 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Get single quiz
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', auth, cacheMiddleware(30), async (req, res) => {
   try {
-    const quiz = await Quiz.findOne({ _id: req.params.id, user: req.userId }).populate('document', 'title');
+    const quiz = await Quiz.findOne({ _id: req.params.id, user: req.userId })
+      .populate('document', 'title')
+      .lean();
     if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
     res.json(quiz);
   } catch (error) {
@@ -133,6 +144,11 @@ router.post('/:id/attempt', auth, async (req, res) => {
     await attempt.save();
     await attempt.populate('quiz', 'title questions');
 
+    // Invalidate caches
+    invalidateUser('quizzes', req.userId);
+    invalidateUser('attempts', req.userId);
+    invalidateUser('dashboard', req.userId);
+
     res.json({
       message: 'Quiz submitted successfully',
       attempt,
@@ -157,9 +173,11 @@ router.post('/:id/attempt', auth, async (req, res) => {
 });
 
 // Get quiz attempts
-router.get('/:id/attempts', auth, async (req, res) => {
+router.get('/:id/attempts', auth, cacheMiddleware(30), async (req, res) => {
   try {
-    const attempts = await QuizAttempt.find({ quiz: req.params.id, user: req.userId }).sort({ createdAt: -1 });
+    const attempts = await QuizAttempt.find({ quiz: req.params.id, user: req.userId })
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(attempts);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -172,6 +190,12 @@ router.delete('/:id', auth, async (req, res) => {
     const quiz = await Quiz.findOneAndDelete({ _id: req.params.id, user: req.userId });
     if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
     await QuizAttempt.deleteMany({ quiz: req.params.id });
+    
+    // Invalidate caches
+    invalidateUser('quizzes', req.userId);
+    invalidateUser('attempts', req.userId);
+    invalidateUser('dashboard', req.userId);
+    
     res.json({ message: 'Quiz deleted successfully' });
   } catch (error) {
     console.error('Delete quiz error:', error);

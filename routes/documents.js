@@ -5,6 +5,7 @@ const fs = require('fs');
 const pdfParse = require('pdf-parse');
 const Document = require('../models/Document');
 const auth = require('../middleware/auth');
+const { cache, key, invalidateUser } = require('../utils/cache');
 
 const router = express.Router();
 
@@ -100,6 +101,11 @@ router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
       fs.unlinkSync(req.file.path);
     }
 
+    // Invalidate caches that depend on document counts
+    invalidateUser('dashboard', req.userId);
+    invalidateUser('goals', req.userId);
+    invalidateUser('analytics', req.userId);
+
     res.status(201).json({
       message: 'Document uploaded successfully',
       document: {
@@ -129,6 +135,11 @@ router.get('/', auth, async (req, res) => {
   try {
     const { page = 1, limit = 10, search, tags } = req.query;
     
+    // Create cache key based on query params
+    const cacheKey = key('documents', req.userId, JSON.stringify(req.query));
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json(cached);
+    
     let query = { user: req.userId };
     
     // Add search functionality
@@ -143,19 +154,23 @@ router.get('/', auth, async (req, res) => {
     }
 
     const documents = await Document.find(query)
-      .select('-content') // Exclude content for list view
+      .select('-content -pdfData') // Exclude heavy fields for list view
       .sort({ createdAt: -1 })
       .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .skip((page - 1) * limit)
+      .lean();
 
     const total = await Document.countDocuments(query);
 
-    res.json({
+    const result = {
       documents,
       totalPages: Math.ceil(total / limit),
       currentPage: page,
       total
-    });
+    };
+    
+    cache.set(cacheKey, result, 30);
+    res.json(result);
   } catch (error) {
     console.error('Get documents error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -226,6 +241,11 @@ router.delete('/:id', auth, async (req, res) => {
 
     // Delete document from database
     await Document.findByIdAndDelete(req.params.id);
+
+    // Invalidate caches
+    invalidateUser('dashboard', req.userId);
+    invalidateUser('goals', req.userId);
+    invalidateUser('analytics', req.userId);
 
     res.json({ message: 'Document deleted successfully' });
   } catch (error) {
