@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 const Register = () => {
+  // Local state for the signup form, password visibility, and loading/error feedback.
   const [formData, setFormData] = useState({
     name: '',
     email: '',

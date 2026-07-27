@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+// Define the structure of a document stored by the learning assistant.
 const documentSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -30,6 +31,10 @@ const documentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  chunks: [{
+    type: String,
+    default: []
+  }],
   pdfData: {
     type: String,
     default: ''

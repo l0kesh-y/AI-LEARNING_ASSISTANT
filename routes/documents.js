@@ -6,10 +6,11 @@ const pdfParse = require('pdf-parse');
 const Document = require('../models/Document');
 const auth = require('../middleware/auth');
 const { cache, key, invalidateUser } = require('../utils/cache');
+const { chunkText } = require('../utils/textChunker');
 
 const router = express.Router();
 
-// Configure multer for file uploads
+// Configure file upload handling for PDF documents.
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadDir = 'uploads/documents';
@@ -49,7 +50,7 @@ router.get('/upload-status', auth, async (req, res) => {
   }
 });
 
-// Upload and process PDF
+// Upload a PDF, extract its text, and save it as a document for the user.
 router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
   try {
     if (!req.file) {
@@ -78,6 +79,8 @@ router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
     // Convert PDF to base64 for storage
     const pdfBase64 = pdfBuffer.toString('base64');
     
+    const chunks = chunkText(pdfData.text, 2000);
+
     // Create document record
     const document = new Document({
       title: title || req.file.originalname.replace('.pdf', ''),
@@ -93,6 +96,8 @@ router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
       tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
       processingStatus: 'completed'
     });
+
+    document.chunks = chunks;
 
     await document.save();
     

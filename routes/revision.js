@@ -2,9 +2,11 @@ const express = require('express');
 const { getGroqClient } = require('../utils/groqLoadBalancer');
 const Document = require('../models/Document');
 const auth = require('../middleware/auth');
+const { chunkText } = require('../utils/textChunker');
 
 const router = express.Router();
 
+// Routes for generating revision questions and evaluating spoken answers with AI.
 /**
  * POST /api/revision/generate/:documentId
  * Generate a set of spoken revision questions from document content.
@@ -18,6 +20,7 @@ router.post('/generate/:documentId', auth, async (req, res) => {
     const document = await Document.findOne({ _id: documentId, user: req.userId });
     if (!document) return res.status(404).json({ message: 'Document not found' });
 
+    const chunks = chunkText(document.content || '', 4000);
     const groq = getGroqClient();
     const completion = await groq.createCompletion({
       messages: [
@@ -34,7 +37,7 @@ No extra text, just the JSON array.`
         },
         {
           role: 'user',
-          content: `Create ${count} revision questions for:\n\nTitle: ${document.title}\n\nContent:\n${document.content.substring(0, 7000)}`
+          content: `Create ${count} revision questions for:\n\nTitle: ${document.title}\n\nContent:\n${chunks.slice(0, 2).join('\n\n')}`
         }
       ],
       model: 'llama-3.1-8b-instant',
@@ -81,7 +84,8 @@ router.post('/evaluate', auth, async (req, res) => {
     if (documentId) {
       const document = await Document.findOne({ _id: documentId, user: req.userId });
       if (document) {
-        documentContext = `\n\nDocument context: ${document.content.substring(0, 3000)}`;
+        const chunks = chunkText(document.content || '', 3000);
+        documentContext = `\n\nDocument context: ${chunks.slice(0, 2).join('\n\n')}`;
       }
     }
 

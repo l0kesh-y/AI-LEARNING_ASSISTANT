@@ -4,9 +4,11 @@ const Document = require('../models/Document');
 const ChatHistory = require('../models/ChatHistory');
 const auth = require('../middleware/auth');
 const { cacheMiddleware } = require('../utils/cache');
+const { chunkText } = require('../utils/textChunker');
 
 const router = express.Router();
 
+// AI routes for chatting with documents, generating summaries, and explaining concepts.
 // Chat with document
 router.post('/chat/:documentId', auth, async (req, res) => {
   try {
@@ -31,7 +33,8 @@ router.post('/chat/:documentId', auth, async (req, res) => {
 
     chatHistory.messages.push({ role: 'user', content: message });
 
-    const context = `Document Title: ${document.title}\n\nDocument Content:\n${document.content.substring(0, 8000)}`;
+    const chunks = chunkText(document.content || '', 4000);
+    const context = `Document Title: ${document.title}\n\nDocument Content:\n${chunks.slice(0, 2).join('\n\n')}`;
     const recentMessages = chatHistory.messages.slice(-10);
 
     const messages = [
@@ -71,11 +74,12 @@ router.post('/summarize/:documentId', auth, async (req, res) => {
 
     if (document.summary) return res.json({ summary: document.summary });
 
+    const chunks = chunkText(document.content || '', 4000);
     const groq = getGroqClient();
     const completion = await groq.createCompletion({
       messages: [
         { role: 'system', content: 'You are an AI assistant that creates concise, informative summaries of academic documents. Focus on key concepts, main arguments, and important details.' },
-        { role: 'user', content: `Please provide a comprehensive summary of the following document:\n\nTitle: ${document.title}\n\nContent:\n${document.content}` }
+        { role: 'user', content: `Please provide a comprehensive summary of the following document:\n\nTitle: ${document.title}\n\nContent:\n${chunks.join('\n\n')}` }
       ],
       model: 'llama-3.1-8b-instant',
       temperature: 0.3,
@@ -101,12 +105,13 @@ router.post('/explain/:documentId', auth, async (req, res) => {
     const document = await Document.findOne({ _id: documentId, user: req.userId });
     if (!document) return res.status(404).json({ message: 'Document not found' });
 
+    const chunks = chunkText(document.content || '', 4000);
     const groq = getGroqClient();
     const completion = await groq.createCompletion({
       messages: [
         {
           role: 'system',
-          content: `You are an AI tutor that explains concepts clearly and thoroughly. Use the provided document as your primary source.\n\nDocument Context:\nTitle: ${document.title}\nContent: ${document.content.substring(0, 6000)}`
+          content: `You are an AI tutor that explains concepts clearly and thoroughly. Use the provided document as your primary source.\n\nDocument Context:\nTitle: ${document.title}\nContent: ${chunks.slice(0, 2).join('\n\n')}`
         },
         { role: 'user', content: `Please explain the concept of "${concept}" based on the information in this document. Provide a clear, detailed explanation with examples if available.` }
       ],

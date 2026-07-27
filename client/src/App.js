@@ -15,6 +15,7 @@ import Progress from './pages/Progress/Progress';
 import Revision from './pages/Revision/Revision';
 import Settings from './pages/Settings/Settings';
 
+// Main application shell that decides which screens to show based on auth state.
 function AppContent() {
   const { user, loading } = useAuth();
 

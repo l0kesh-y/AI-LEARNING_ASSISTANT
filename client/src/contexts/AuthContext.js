@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
+// Shared authentication context for login, signup, logout, and profile actions.
 const AuthContext = createContext();
 
 export const useAuth = () => {
