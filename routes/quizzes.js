@@ -1,11 +1,15 @@
 const express = require('express');
-const { getGroqClient } = require('../utils/groqLoadBalancer');
+const Groq = require('groq-sdk');
 const { Quiz, QuizAttempt } = require('../models/Quiz');
 const Document = require('../models/Document');
 const auth = require('../middleware/auth');
-const { cacheMiddleware, invalidateUser } = require('../utils/cache');
 
 const router = express.Router();
+
+// Initialize Groq client
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
+});
 
 // Generate quiz from document
 router.post('/generate/:documentId', auth, async (req, res) => {
@@ -16,8 +20,7 @@ router.post('/generate/:documentId', auth, async (req, res) => {
     const document = await Document.findOne({ _id: documentId, user: req.userId });
     if (!document) return res.status(404).json({ message: 'Document not found' });
 
-    const groq = getGroqClient();
-    const completion = await groq.createCompletion({
+    const completion = await groq.chat.completions.create({
       messages: [
         {
           role: 'system',
@@ -54,8 +57,6 @@ router.post('/generate/:documentId', auth, async (req, res) => {
     });
 
     await quiz.save();
-    invalidateUser('quizzes', req.userId);
-    invalidateUser('dashboard', req.userId);
     res.json({ message: 'Quiz generated successfully', quiz });
   } catch (error) {
     console.error('Generate quiz error:', error);
@@ -64,7 +65,7 @@ router.post('/generate/:documentId', auth, async (req, res) => {
 });
 
 // Get all quizzes for a document
-router.get('/document/:documentId', auth, cacheMiddleware(30), async (req, res) => {
+router.get('/document/:documentId', auth, async (req, res) => {
   try {
     const quizzes = await Quiz.find({ document: req.params.documentId, user: req.userId })
       .sort({ createdAt: -1 })
@@ -76,7 +77,7 @@ router.get('/document/:documentId', auth, cacheMiddleware(30), async (req, res) 
 });
 
 // Get all user quizzes (must be before /:id)
-router.get('/attempts/all', auth, cacheMiddleware(30), async (req, res) => {
+router.get('/attempts/all', auth, async (req, res) => {
   try {
     const attempts = await QuizAttempt.find({ user: req.userId })
       .sort({ createdAt: -1 })
@@ -90,7 +91,7 @@ router.get('/attempts/all', auth, cacheMiddleware(30), async (req, res) => {
 });
 
 // Get all user quizzes
-router.get('/', auth, cacheMiddleware(30), async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const quizzes = await Quiz.find({ user: req.userId })
       .sort({ createdAt: -1 })
@@ -103,7 +104,7 @@ router.get('/', auth, cacheMiddleware(30), async (req, res) => {
 });
 
 // Get single quiz
-router.get('/:id', auth, cacheMiddleware(30), async (req, res) => {
+router.get('/:id', auth, async (req, res) => {
   try {
     const quiz = await Quiz.findOne({ _id: req.params.id, user: req.userId })
       .populate('document', 'title')
@@ -144,11 +145,6 @@ router.post('/:id/attempt', auth, async (req, res) => {
     await attempt.save();
     await attempt.populate('quiz', 'title questions');
 
-    // Invalidate caches
-    invalidateUser('quizzes', req.userId);
-    invalidateUser('attempts', req.userId);
-    invalidateUser('dashboard', req.userId);
-
     res.json({
       message: 'Quiz submitted successfully',
       attempt,
@@ -173,7 +169,7 @@ router.post('/:id/attempt', auth, async (req, res) => {
 });
 
 // Get quiz attempts
-router.get('/:id/attempts', auth, cacheMiddleware(30), async (req, res) => {
+router.get('/:id/attempts', auth, async (req, res) => {
   try {
     const attempts = await QuizAttempt.find({ quiz: req.params.id, user: req.userId })
       .sort({ createdAt: -1 })
@@ -190,11 +186,6 @@ router.delete('/:id', auth, async (req, res) => {
     const quiz = await Quiz.findOneAndDelete({ _id: req.params.id, user: req.userId });
     if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
     await QuizAttempt.deleteMany({ quiz: req.params.id });
-    
-    // Invalidate caches
-    invalidateUser('quizzes', req.userId);
-    invalidateUser('attempts', req.userId);
-    invalidateUser('dashboard', req.userId);
     
     res.json({ message: 'Quiz deleted successfully' });
   } catch (error) {

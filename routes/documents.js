@@ -5,7 +5,6 @@ const fs = require('fs');
 const pdfParse = require('pdf-parse');
 const Document = require('../models/Document');
 const auth = require('../middleware/auth');
-const { cache, key, invalidateUser } = require('../utils/cache');
 const { chunkText } = require('../utils/textChunker');
 
 const router = express.Router();
@@ -106,11 +105,6 @@ router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
       fs.unlinkSync(req.file.path);
     }
 
-    // Invalidate caches that depend on document counts
-    invalidateUser('dashboard', req.userId);
-    invalidateUser('goals', req.userId);
-    invalidateUser('analytics', req.userId);
-
     res.status(201).json({
       message: 'Document uploaded successfully',
       document: {
@@ -139,11 +133,6 @@ router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
 router.get('/', auth, async (req, res) => {
   try {
     const { page = 1, limit = 10, search, tags } = req.query;
-    
-    // Create cache key based on query params
-    const cacheKey = key('documents', req.userId, JSON.stringify(req.query));
-    const cached = cache.get(cacheKey);
-    if (cached) return res.json(cached);
     
     let query = { user: req.userId };
     
@@ -174,7 +163,6 @@ router.get('/', auth, async (req, res) => {
       total
     };
     
-    cache.set(cacheKey, result, 30);
     res.json(result);
   } catch (error) {
     console.error('Get documents error:', error);
@@ -246,11 +234,6 @@ router.delete('/:id', auth, async (req, res) => {
 
     // Delete document from database
     await Document.findByIdAndDelete(req.params.id);
-
-    // Invalidate caches
-    invalidateUser('dashboard', req.userId);
-    invalidateUser('goals', req.userId);
-    invalidateUser('analytics', req.userId);
 
     res.json({ message: 'Document deleted successfully' });
   } catch (error) {

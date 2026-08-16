@@ -1,93 +1,56 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Navbar, Nav, NavDropdown, Container } from 'react-bootstrap';
+import { BookOpen, LogOut, User, LogOut as Logout } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import {
-  Cog6ToothIcon,
-  ArrowRightOnRectangleIcon,
-  UserCircleIcon
-} from '@heroicons/react/24/outline';
 
-const getInitials = (name = '') =>
-  name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
-
-const CustomNavbar = () => {
+const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [showProfile, setShowProfile] = useState(false);
 
-  const avatarColor = user?.avatar || '#6366f1';
-  const initials    = getInitials(user?.name);
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
-    <Navbar bg="white" expand="lg" className="navbar-custom fixed-top">
-      <Container fluid>
-        <Navbar.Brand href="/" className="fw-bold text-primary-custom fs-4">
-          AI Learning Assistant
-        </Navbar.Brand>
+    <nav className="navbar">
+      <div className="navbar-brand">
+        <button 
+          className="navbar-logo"
+          onClick={() => navigate('/documents')}
+        >
+          <BookOpen />
+          <span>AI Learning</span>
+        </button>
+      </div>
 
-        <Nav className="ms-auto d-flex align-items-center">
-          {/* User Menu */}
-          <NavDropdown
-            title={
-              <div className="d-flex align-items-center gap-2">
-                {/* Avatar circle */}
-                <div
-                  className="d-flex align-items-center justify-content-center rounded-circle text-white fw-bold"
-                  style={{
-                    width: 36, height: 36,
-                    backgroundColor: avatarColor.startsWith('#') ? avatarColor : '#6366f1',
-                    fontSize: 13, flexShrink: 0
-                  }}
-                >
-                  {initials}
-                </div>
-                <div className="text-end d-none d-md-block">
-                  <div className="fw-medium text-dark" style={{ lineHeight: 1.2 }}>{user?.name}</div>
-                  <div className="text-muted" style={{ fontSize: '0.72rem', lineHeight: 1.2 }}>{user?.email}</div>
-                </div>
-              </div>
-            }
-            id="user-dropdown"
-            align="end"
+      <div className="navbar-actions">
+        <div className="navbar-user">
+          <button
+            className="navbar-user-btn"
+            onClick={() => setShowProfile(!showProfile)}
           >
-            {/* Profile header inside dropdown */}
-            <div className="px-3 py-2 border-bottom">
-              <div className="d-flex align-items-center gap-2">
-                <div
-                  className="d-flex align-items-center justify-content-center rounded-circle text-white fw-bold"
-                  style={{
-                    width: 42, height: 42,
-                    backgroundColor: avatarColor.startsWith('#') ? avatarColor : '#6366f1',
-                    fontSize: 15, flexShrink: 0
-                  }}
-                >
-                  {initials}
-                </div>
-                <div>
-                  <div className="fw-semibold" style={{ fontSize: '0.9rem' }}>{user?.name}</div>
-                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>{user?.email}</div>
-                </div>
-              </div>
-            </div>
+            <User size={18} />
+            <span>{user?.name || 'User'}</span>
+          </button>
 
-            <NavDropdown.Item onClick={() => navigate('/settings')}>
-              <UserCircleIcon className="me-2" style={{ width: 16, height: 16 }} />
-              Profile
-            </NavDropdown.Item>
-            <NavDropdown.Item onClick={() => navigate('/settings?tab=security')}>
-              <Cog6ToothIcon className="me-2" style={{ width: 16, height: 16 }} />
-              Settings
-            </NavDropdown.Item>
-            <NavDropdown.Divider />
-            <NavDropdown.Item onClick={logout} className="text-danger">
-              <ArrowRightOnRectangleIcon className="me-2" style={{ width: 16, height: 16 }} />
-              Sign out
-            </NavDropdown.Item>
-          </NavDropdown>
-        </Nav>
-      </Container>
-    </Navbar>
+          {showProfile && (
+            <div className="navbar-dropdown">
+              <div className="dropdown-header">
+                <div className="dropdown-name">{user?.name}</div>
+                <div className="dropdown-email">{user?.email}</div>
+              </div>
+              <button className="dropdown-logout" onClick={handleLogout}>
+                <LogOut />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </nav>
   );
 };
 
-export default CustomNavbar;
+export default Navbar;

@@ -5,75 +5,81 @@ import Navbar from './components/Layout/Navbar';
 import Sidebar from './components/Layout/Sidebar';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
-import Dashboard from './pages/Dashboard/Dashboard';
 import Documents from './pages/Documents/Documents';
 import DocumentViewer from './pages/Documents/DocumentViewer';
 import Flashcards from './pages/Flashcards/Flashcards';
 import Quizzes from './pages/Quizzes/Quizzes';
 import QuizTaker from './pages/Quizzes/QuizTaker';
-import Progress from './pages/Progress/Progress';
-import Revision from './pages/Revision/Revision';
-import Settings from './pages/Settings/Settings';
 
-// Main application shell that decides which screens to show based on auth state.
+const LoadingSpinner = () => (
+  <div style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+    flexDirection: 'column',
+    gap: '1rem'
+  }}>
+    <div style={{
+      width: '40px',
+      height: '40px',
+      border: '4px solid rgba(14, 165, 233, 0.2)',
+      borderTopColor: '#0ea5e9',
+      borderRadius: '50%',
+      animation: 'spin 0.8s linear infinite'
+    }} />
+    <p style={{ color: '#6b7280', fontSize: '1rem', fontWeight: '600' }}>
+      Loading your learning assistant...
+    </p>
+  </div>
+);
+
 function AppContent() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center min-vh-100">
-        <div className="spinner-border text-primary spinner-border-custom" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!user) {
     return (
-      <Router>
-        <div className="min-vh-100 bg-light">
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="*" element={<Navigate to="/login" />} />
-          </Routes>
-        </div>
-      </Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
     );
   }
 
   return (
-    <Router>
-      <div className="min-vh-100 bg-light">
-        <Navbar />
+    <div className="App">
+      <Navbar />
+      <div className="app-container">
         <Sidebar />
-        <main className="main-content">
-          <div className="container-fluid p-4">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/documents" element={<Documents />} />
-              <Route path="/documents/:id" element={<DocumentViewer />} />
-              <Route path="/flashcards" element={<Flashcards />} />
-              <Route path="/quizzes" element={<Quizzes />} />
-              <Route path="/quiz/:id" element={<QuizTaker />} />
-              <Route path="/progress" element={<Progress />} />
-              <Route path="/revision" element={<Revision />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </div>
-        </main>
+        <div className="main-content">
+          <Routes>
+            <Route path="/" element={<Documents />} />
+            <Route path="/documents" element={<Documents />} />
+            <Route path="/documents/:id" element={<DocumentViewer />} />
+            <Route path="/flashcards" element={<Flashcards />} />
+            <Route path="/quizzes" element={<Quizzes />} />
+            <Route path="/quiz/:id" element={<QuizTaker />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </div>
       </div>
-    </Router>
+    </div>
   );
 }
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </Router>
   );
 }
 

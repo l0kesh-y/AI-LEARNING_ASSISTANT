@@ -1,11 +1,15 @@
 const express = require('express');
-const { getGroqClient } = require('../utils/groqLoadBalancer');
+const Groq = require('groq-sdk');
 const Flashcard = require('../models/Flashcard');
 const Document = require('../models/Document');
 const auth = require('../middleware/auth');
-const { cache, key, invalidateUser } = require('../utils/cache');
 
 const router = express.Router();
+
+// Initialize Groq client
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
+});
 
 // Generate flashcards from document
 router.post('/generate/:documentId', auth, async (req, res) => {
@@ -16,8 +20,7 @@ router.post('/generate/:documentId', auth, async (req, res) => {
     const document = await Document.findOne({ _id: documentId, user: req.userId });
     if (!document) return res.status(404).json({ message: 'Document not found' });
 
-    const groq = getGroqClient();
-    const completion = await groq.createCompletion({
+    const completion = await groq.chat.completions.create({
       messages: [
         {
           role: 'system',
@@ -55,8 +58,6 @@ router.post('/generate/:documentId', auth, async (req, res) => {
       }))
     );
 
-    invalidateUser('flashcards', req.userId);
-    invalidateUser('dashboard', req.userId);
     res.json({ message: 'Flashcards generated successfully', flashcards });
   } catch (error) {
     console.error('Generate flashcards error:', error);
@@ -69,11 +70,7 @@ router.get('/document/:documentId', auth, async (req, res) => {
   try {
     let query = { document: req.params.documentId, user: req.userId };
     if (req.query.favorite === 'true') query.isFavorite = true;
-    const cacheKey = key('flashcards-doc', req.userId, req.params.documentId);
-    const cached = cache.get(cacheKey);
-    if (cached) return res.json(cached);
     const flashcards = await Flashcard.find(query).sort({ createdAt: -1 }).populate('document', 'title').lean();
-    cache.set(cacheKey, flashcards, 30);
     res.json(flashcards);
   } catch (error) {
     console.error('Get flashcards error:', error);
@@ -87,11 +84,7 @@ router.get('/', auth, async (req, res) => {
     let query = { user: req.userId };
     if (req.query.favorite === 'true') query.isFavorite = true;
     if (req.query.difficulty) query.difficulty = req.query.difficulty;
-    const cacheKey = key('flashcards', req.userId, JSON.stringify(req.query));
-    const cached = cache.get(cacheKey);
-    if (cached) return res.json(cached);
     const flashcards = await Flashcard.find(query).sort({ createdAt: -1 }).populate('document', 'title').lean();
-    cache.set(cacheKey, flashcards, 30);
     res.json(flashcards);
   } catch (error) {
     console.error('Get flashcards error:', error);
@@ -106,8 +99,6 @@ router.patch('/:id/favorite', auth, async (req, res) => {
     if (!flashcard) return res.status(404).json({ message: 'Flashcard not found' });
     flashcard.isFavorite = !flashcard.isFavorite;
     await flashcard.save();
-    invalidateUser('flashcards', req.userId);
-    invalidateUser('flashcards-doc', req.userId);
     res.json(flashcard);
   } catch (error) {
     console.error('Toggle favorite error:', error);
@@ -129,9 +120,6 @@ router.post('/:id/review', auth, async (req, res) => {
     flashcard.nextReview = new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000);
 
     await flashcard.save();
-    invalidateUser('flashcards', req.userId);
-    invalidateUser('flashcards-doc', req.userId);
-    invalidateUser('dashboard', req.userId);
     res.json(flashcard);
   } catch (error) {
     console.error('Review flashcard error:', error);
@@ -144,9 +132,6 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     const flashcard = await Flashcard.findOneAndDelete({ _id: req.params.id, user: req.userId });
     if (!flashcard) return res.status(404).json({ message: 'Flashcard not found' });
-    invalidateUser('flashcards', req.userId);
-    invalidateUser('flashcards-doc', req.userId);
-    invalidateUser('dashboard', req.userId);
     res.json({ message: 'Flashcard deleted successfully' });
   } catch (error) {
     console.error('Delete flashcard error:', error);

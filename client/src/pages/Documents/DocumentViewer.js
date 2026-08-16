@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import ReactMarkdown from 'react-markdown';
-import { Container, Row, Col, Card, Button, Nav, Form, InputGroup } from 'react-bootstrap';
+import { FileText, MessageSquare, ChevronLeft, Send, Sparkles } from 'lucide-react';
+import { API_URL } from '../../config/api';
 
 const DocumentViewer = () => {
   const { id } = useParams();
   const [document, setDocument] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('viewer');
+  const [activeTab, setActiveTab] = useState('chat');
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -17,9 +17,12 @@ const DocumentViewer = () => {
 
   const fetchDocument = useCallback(async () => {
     try {
-      const response = await axios.get(`/documents/${id}`);
-      setDocument(response.data);
-      setSummary(response.data.summary);
+      const token = localStorage.getItem('token');
+      const { data } = await axios.get(`${API_URL}/documents/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDocument(data);
+      setSummary(data.summary);
     } catch (error) {
       console.error('Failed to fetch document:', error);
     } finally {
@@ -37,22 +40,22 @@ const DocumentViewer = () => {
 
     const userMessage = { role: 'user', content: chatInput };
     setChatMessages(prev => [...prev, userMessage]);
+    const inputText = chatInput;
     setChatInput('');
     setChatLoading(true);
 
     try {
-      const response = await axios.post(`/ai/chat/${id}`, {
-        message: chatInput
+      const token = localStorage.getItem('token');
+      const { data } = await axios.post(`${API_URL}/ai/chat/${id}`, {
+        message: inputText
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
 
-      const aiMessage = { role: 'assistant', content: response.data.response };
+      const aiMessage = { role: 'assistant', content: data.response };
       setChatMessages(prev => [...prev, aiMessage]);
     } catch (error) {
-      console.error('Chat error:', error);
-      const errorMessage = { 
-        role: 'assistant', 
-        content: 'Sorry, I encountered an error. Please try again.' 
-      };
+      const errorMessage = { role: 'assistant', content: 'Error: Could not get response' };
       setChatMessages(prev => [...prev, errorMessage]);
     } finally {
       setChatLoading(false);
@@ -62,10 +65,13 @@ const DocumentViewer = () => {
   const generateSummary = async () => {
     setSummaryLoading(true);
     try {
-      const response = await axios.post(`/ai/summarize/${id}`);
-      setSummary(response.data.summary);
+      const token = localStorage.getItem('token');
+      const { data } = await axios.post(`${API_URL}/ai/summarize/${id}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSummary(data.summary);
     } catch (error) {
-      console.error('Summary error:', error);
+      alert('Failed to generate summary');
     } finally {
       setSummaryLoading(false);
     }
@@ -73,238 +79,131 @@ const DocumentViewer = () => {
 
   const generateFlashcards = async () => {
     try {
-      await axios.post(`/flashcards/generate/${id}`, {
-        count: 10,
-        difficulty: 'medium'
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/flashcards/generate/${id}`, {
+        count: 10, difficulty: 'medium'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      alert('Flashcards generated successfully!');
+      alert('Flashcards generated! Check your Flashcards page.');
     } catch (error) {
-      console.error('Flashcard generation error:', error);
-      alert('Failed to generate flashcards. Please try again.');
+      alert('Failed to generate flashcards');
     }
   };
 
   const generateQuiz = async () => {
     try {
-      await axios.post(`/quizzes/generate/${id}`, {
-        questionCount: 5,
-        difficulty: 'medium'
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/quizzes/generate/${id}`, {
+        questionCount: 5, difficulty: 'medium'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      alert('Quiz generated successfully!');
+      alert('Quiz generated! Check your Quizzes page.');
     } catch (error) {
-      console.error('Quiz generation error:', error);
-      alert('Failed to generate quiz. Please try again.');
+      alert('Failed to generate quiz');
     }
   };
 
   if (loading) {
     return (
-      <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
-        <div className="spinner-border text-primary spinner-border-custom" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </Container>
+      <div className="main-content">
+        <p>Loading document...</p>
+      </div>
     );
   }
 
   if (!document) {
     return (
-      <Container className="text-center py-5">
-        <i className="bi bi-file-earmark-text display-1 text-muted mb-3"></i>
-        <h3 className="h5 fw-medium mb-3">Document not found</h3>
-        <Link to="/documents">
-          <Button variant="primary">
-            <i className="bi bi-arrow-left me-2"></i>
-            Back to Documents
-          </Button>
-        </Link>
-      </Container>
+      <div className="main-content">
+        <p>Document not found</p>
+        <Link to="/documents">Back to Documents</Link>
+      </div>
     );
   }
 
-  const tabs = [
-    { id: 'viewer', name: 'PDF Viewer', icon: 'file-earmark-pdf' },
-    { id: 'chat', name: 'AI Chat', icon: 'chat-dots' },
-    { id: 'summary', name: 'Summary', icon: 'stars' },
-  ];
-
   return (
-    <Container fluid className="py-4">
-      {/* Header */}
-      <Row className="align-items-center mb-4">
-        <Col>
-          <div className="d-flex align-items-center">
-            <Link to="/documents" className="text-decoration-none text-muted me-3">
-              <i className="bi bi-arrow-left fs-4"></i>
-            </Link>
-            <div>
-              <h1 className="h3 fw-bold mb-1">{document.title}</h1>
-              <p className="text-muted mb-0">
-                {document.pageCount} pages • {new Date(document.createdAt).toLocaleDateString()}
+    <div className="main-content">
+      <Link to="/documents" className="btn btn-secondary" style={{ marginBottom: '1.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+        <ChevronLeft size={18} />
+        <span>Back to Documents</span>
+      </Link>
+
+      <h1>{document.title}</h1>
+      <p>{document.pageCount} pages • {new Date(document.createdAt).toLocaleDateString()}</p>
+
+      <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+        <button className="btn btn-success" onClick={generateFlashcards}>
+          <Sparkles size={18} />
+          <span>Generate Flashcards</span>
+        </button>
+        <button className="btn btn-success" onClick={generateQuiz}>
+          <Sparkles size={18} />
+          <span>Generate Quiz</span>
+        </button>
+      </div>
+
+      <div className="tabs">
+        <button className={`tab ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>
+          <MessageSquare size={18} />
+          <span>Ask AI</span>
+        </button>
+        <button className={`tab ${activeTab === 'summary' ? 'active' : ''}`} onClick={() => setActiveTab('summary')}>
+          <FileText size={18} />
+          <span>Summary</span>
+        </button>
+      </div>
+
+      {activeTab === 'chat' && (
+        <div className="card">
+          <h2>Ask Questions</h2>
+          <p style={{ marginBottom: '1.5rem' }}>Get instant answers about your document</p>
+          <div className="chat-container">
+            {chatMessages.length === 0 ? (
+              <p style={{ color: '#9CA3AF', textAlign: 'center', padding: '2rem' }}>
+                Start asking questions about your document...
               </p>
-            </div>
+            ) : (
+              chatMessages.map((msg, i) => (
+                <div key={i} className={`chat-message ${msg.role}`}>
+                  <div className="chat-sender">{msg.role === 'user' ? 'You' : 'AI'}</div>
+                  <div className="chat-bubble">{msg.content}</div>
+                </div>
+              ))
+            )}
+            {chatLoading && <p style={{ color: '#4F46E5', fontStyle: 'italic' }}>AI is thinking...</p>}
           </div>
-        </Col>
-        <Col xs="auto">
-          <div className="d-flex gap-2">
-            <Button
-              variant="outline-primary"
-              size="sm"
-              onClick={generateFlashcards}
-            >
-              <i className="bi bi-mortarboard me-2"></i>
-              Generate Flashcards
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={generateQuiz}
-            >
-              <i className="bi bi-question-circle me-2"></i>
-              Generate Quiz
-            </Button>
-          </div>
-        </Col>
-      </Row>
+          <form onSubmit={handleChat} className="chat-input-form">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="Ask a question..."
+              disabled={chatLoading}
+            />
+            <button type="submit" className="btn btn-primary" disabled={chatLoading || !chatInput.trim()}>
+              <Send size={18} />
+            </button>
+          </form>
+        </div>
+      )}
 
-      {/* Tabs */}
-      <Nav variant="tabs" className="mb-4">
-        {tabs.map((tab) => (
-          <Nav.Item key={tab.id}>
-            <Nav.Link
-              active={activeTab === tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{ cursor: 'pointer' }}
-            >
-              <i className={`bi bi-${tab.icon} me-2`}></i>
-              {tab.name}
-            </Nav.Link>
-          </Nav.Item>
-        ))}
-      </Nav>
-
-      {/* Tab Content */}
-      <Card className="shadow-sm">
-        <Card.Body>
-          {activeTab === 'viewer' && (
-            <div className="text-center py-5">
-              <i className="bi bi-file-earmark-pdf display-1 text-muted mb-4"></i>
-              <h3 className="h5 fw-medium mb-3">Document Content</h3>
-              <p className="text-muted mb-4">
-                Use the AI Chat to ask questions about this document, or generate a Summary, Flashcards, or Quiz.
-              </p>
-            </div>
-          )}
-
-          {activeTab === 'chat' && (
-            <div style={{ height: '500px', display: 'flex', flexDirection: 'column' }}>
-              <div className="flex-grow-1 overflow-auto p-3 mb-3" style={{ maxHeight: '400px' }}>
-                {chatMessages.length === 0 ? (
-                  <div className="text-center text-muted py-5">
-                    <i className="bi bi-chat-dots display-1 mb-3"></i>
-                    <p>Start a conversation about this document!</p>
-                  </div>
-                ) : (
-                  <div className="d-flex flex-column gap-3">
-                    {chatMessages.map((message, index) => (
-                      <div
-                        key={index}
-                        className={`d-flex ${message.role === 'user' ? 'justify-content-end' : 'justify-content-start'}`}
-                      >
-                        <div
-                          className={`px-3 py-2 rounded ${
-                            message.role === 'user'
-                              ? 'bg-primary text-white'
-                              : 'bg-light text-dark'
-                          }`}
-                          style={{ maxWidth: '70%' }}
-                        >
-                          {message.role === 'user' ? (
-                            message.content
-                          ) : (
-                            <ReactMarkdown>{message.content}</ReactMarkdown>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {chatLoading && (
-                      <div className="d-flex justify-content-start">
-                        <div className="bg-light px-3 py-2 rounded">
-                          <div className="d-flex gap-1">
-                            <div className="spinner-grow spinner-grow-sm" role="status">
-                              <span className="visually-hidden">Loading...</span>
-                            </div>
-                            <div className="spinner-grow spinner-grow-sm" role="status">
-                              <span className="visually-hidden">Loading...</span>
-                            </div>
-                            <div className="spinner-grow spinner-grow-sm" role="status">
-                              <span className="visually-hidden">Loading...</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              <Form onSubmit={handleChat} className="border-top pt-3">
-                <InputGroup>
-                  <Form.Control
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Ask a question about this document..."
-                    disabled={chatLoading}
-                  />
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    disabled={chatLoading || !chatInput.trim()}
-                  >
-                    Send
-                  </Button>
-                </InputGroup>
-              </Form>
-            </div>
-          )}
-
-          {activeTab === 'summary' && (
+      {activeTab === 'summary' && (
+        <div className="card">
+          <h2>Document Summary</h2>
+          {summary ? (
+            <p style={{ lineHeight: '1.8', color: '#4B5563' }}>{summary}</p>
+          ) : (
             <div>
-              {summary ? (
-                <div>
-                  <h3 className="h5 fw-semibold mb-4">Document Summary</h3>
-                  <div className="text-muted">
-                    <ReactMarkdown>{summary}</ReactMarkdown>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-5">
-                  <i className="bi bi-stars display-1 text-muted mb-4"></i>
-                  <h3 className="h5 fw-medium mb-3">No Summary Available</h3>
-                  <p className="text-muted mb-4">
-                    Generate an AI-powered summary of this document.
-                  </p>
-                  <Button
-                    variant="primary"
-                    onClick={generateSummary}
-                    disabled={summaryLoading}
-                  >
-                    {summaryLoading ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Generating...
-                      </>
-                    ) : (
-                      'Generate Summary'
-                    )}
-                  </Button>
-                </div>
-              )}
+              <p>No summary yet. Generate one to get key insights.</p>
+              <button onClick={generateSummary} disabled={summaryLoading} className="btn btn-primary">
+                {summaryLoading ? 'Generating...' : 'Generate Summary'}
+              </button>
             </div>
           )}
-        </Card.Body>
-      </Card>
-    </Container>
+        </div>
+      )}
+    </div>
   );
 };
 

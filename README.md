@@ -1,52 +1,30 @@
 # AI Learning Assistant
 
-A full-stack AI-powered learning assistant built with the MERN stack (MongoDB, Express, React, Node.js), styled with Tailwind CSS, and powered by Groq AI. Transform PDFs into interactive study experiences with AI chat, auto-generated flashcards, quizzes, summaries, and progress tracking.
+A full-stack AI-powered learning assistant built with React.js, Node.js, Express.js, and MongoDB. Converts PDF documents into interactive study experiences with AI chat, summaries, flashcards, and quizzes using Groq AI APIs.
 
 ## Features
 
-### 🔐 User Authentication
+### User Authentication
 - Secure login & signup with JWT
 - User profile management
-- Protected routes
 
-### 📄 PDF Management
+### PDF Management
 - Upload and store PDF documents
+- PDF text extraction and chunking for processing large documents
 - Embedded PDF viewer
-- File size tracking and management
-- Document tagging and search
 
-### 🤖 AI-Powered Features
+### AI-Powered Features
 - **AI Chat**: Ask questions about your documents with context-aware responses
-- **Document Summarization**: Generate concise summaries with one click
-- **Concept Explanation**: Get detailed explanations of specific topics
+- **Document Summarization**: Generate concise summaries from PDF content
 - **Auto-Generated Flashcards**: Create flashcard sets from document content
 - **AI Quiz Generator**: Generate custom multiple-choice quizzes
-
-### 📚 Study Tools
-- Interactive flashcards with flip animations
-- Spaced repetition system
-- Favorites system for important cards
-- Quiz results and analytics
-- Progress tracking dashboard
-
-### 📊 Analytics & Progress
-- Study time tracking
-- Performance analytics
-- Weekly goals and progress
-- Recent activity feed
-
-### 🎨 Modern UI
-- Responsive design built with Tailwind CSS
-- Mobile-friendly interface
-- Dark/light theme support
-- Smooth animations and transitions
 
 ## Tech Stack
 
 ### Backend
 - **Node.js** - Runtime environment
 - **Express.js** - Web framework
-- **MongoDB** - Database
+- **MongoDB** - Database for user and application data
 - **Mongoose** - ODM for MongoDB
 - **JWT** - Authentication
 - **Multer** - File upload handling
@@ -54,17 +32,15 @@ A full-stack AI-powered learning assistant built with the MERN stack (MongoDB, E
 - **Groq SDK** - AI integration
 
 ### Frontend
-- **React** - UI library
+- **React.js** - UI library
 - **React Router** - Navigation
 - **Axios** - HTTP client
-- **Tailwind CSS** - Styling
-- **Heroicons** - Icons
 - **react-pdf** - PDF viewing
 
 ## Installation
 
 ### Prerequisites
-- Node.js (v14 or higher)
+- Node.js (v18 or higher)
 - MongoDB (local or cloud)
 - Groq API key
 
@@ -89,8 +65,9 @@ A full-stack AI-powered learning assistant built with the MERN stack (MongoDB, E
    JWT_SECRET=your_jwt_secret_key_here
    GROQ_API_KEY=your_groq_api_key_here
    NODE_ENV=development
+   PORT=5000
    ```
-
+   
    Create a `.env` file in the `client` directory:
    ```env
    REACT_APP_API_URL=http://localhost:5000/api
@@ -105,12 +82,37 @@ A full-stack AI-powered learning assistant built with the MERN stack (MongoDB, E
    - Make sure MongoDB is running on your system
    - Or use MongoDB Atlas for cloud database
 
-6. **Run the application**
+6. **Run in Development**
    ```bash
    npm run dev
    ```
+   This starts the backend (port 5000) and React frontend (port 3000).
 
-   This will start both the backend server (port 5000) and React frontend (port 3000).
+## Production Deployment
+
+### Build for Production
+```bash
+npm run build-client
+```
+This creates a production-optimized build in `client/build/`.
+
+### Start Production Server
+```bash
+npm start
+```
+The server will serve the built React app from `client/build/` and API on `/api`.
+
+### Docker Deployment (Optional)
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN cd client && npm install && npm run build
+EXPOSE 5000
+CMD ["npm", "start"]
+```
 
 ## Usage
 
@@ -128,13 +130,8 @@ A full-stack AI-powered learning assistant built with the MERN stack (MongoDB, E
 3. **Study with AI**
    - View documents with the embedded PDF viewer
    - Chat with AI about document content
-   - Generate summaries and explanations
+   - Generate summaries
    - Create flashcards and quizzes automatically
-
-4. **Track Progress**
-   - Monitor your study statistics on the dashboard
-   - View detailed analytics on the Progress page
-   - Set and track weekly study goals
 
 ### API Endpoints
 
@@ -154,21 +151,15 @@ A full-stack AI-powered learning assistant built with the MERN stack (MongoDB, E
 #### AI Features
 - `POST /api/ai/chat/:documentId` - Chat with AI
 - `POST /api/ai/summarize/:documentId` - Generate summary
-- `POST /api/ai/explain/:documentId` - Explain concept
 
 #### Flashcards
 - `POST /api/flashcards/generate/:documentId` - Generate flashcards
 - `GET /api/flashcards` - Get user flashcards
-- `POST /api/flashcards/:id/review` - Update review status
 
 #### Quizzes
 - `POST /api/quizzes/generate/:documentId` - Generate quiz
 - `GET /api/quizzes` - Get user quizzes
 - `POST /api/quizzes/:id/attempt` - Submit quiz attempt
-
-#### Progress
-- `GET /api/progress/dashboard` - Dashboard statistics
-- `GET /api/progress/analytics` - Detailed analytics
 
 ## Project Structure
 
@@ -210,10 +201,30 @@ For support and questions:
 - Check the documentation
 - Review the API endpoints
 
+## Deployment
+
+### Deploy to Render
+1. Create a new Web Service on Render
+2. Connect your GitHub repository
+3. Set the build command: `cd client && npm install && npm run build`
+4. Set the start command: `npm start`
+5. Add environment variables (MONGODB_URI, JWT_SECRET, GROQ_API_KEY, PORT)
+
+### Deploy to Railway
+1. Create a new project on Railway
+2. Deploy from GitHub
+3. Add environment variables
+4. MongoDB connection string should use Atlas or similar
+
+### Deploy to Vercel/Netlify (Frontend Only)
+1. Connect your GitHub repository
+2. Set build command: `npm run build`
+3. Set output directory: `client/build`
+4. Add API_URL environment variable pointing to your backend
+
 ## Acknowledgments
 
 - Groq for AI capabilities
 - MongoDB for database
 - React team for the frontend framework
-- Tailwind CSS for styling
 - All contributors and testers

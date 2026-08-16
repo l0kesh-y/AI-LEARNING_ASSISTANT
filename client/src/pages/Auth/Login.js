@@ -1,116 +1,110 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
+import { BookOpen, Mail, Lock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 const Login = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
+    setLoading(true);
 
-    const result = await login(formData.email, formData.password);
-    
-    if (!result.success) {
-      setError(result.message);
+    try {
+      const result = await login(email, password);
+      if (result.success) {
+        navigate('/documents');
+      } else {
+        setError(result.message);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to login');
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
+  };
+
+  const handleDemoLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const result = await login('demo@example.com', 'demo123456');
+      if (result.success) {
+        navigate('/documents');
+      } else {
+        setError('Demo account not found');
+      }
+    } catch (err) {
+      setError('Demo login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Container fluid className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
-      <Row className="w-100 justify-content-center">
-        <Col xs={12} sm={8} md={6} lg={4}>
-          <Card className="shadow">
-            <Card.Body className="p-4">
-              <div className="text-center mb-4">
-                <h2 className="fw-bold text-dark mb-2">Sign in to your account</h2>
-                <p className="text-muted">
-                  Or{' '}
-                  <Link to="/register" className="text-primary text-decoration-none">
-                    create a new account
-                  </Link>
-                </p>
-              </div>
+    <div className="auth-container">
+      <div className="auth-logo">
+        <BookOpen size={32} />
+      </div>
+      <h1>Welcome Back</h1>
+      <p>Sign in to continue learning with AI</p>
 
-              <Form onSubmit={handleSubmit}>
-                {error && (
-                  <Alert variant="danger" className="mb-3">
-                    {error}
-                  </Alert>
-                )}
+      {error && (
+        <div className="error">
+          <AlertCircle size={18} />
+          <span>{error}</span>
+        </div>
+      )}
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Email address</Form.Label>
-                  <Form.Control
-                    type="email"
-                    name="email"
-                    placeholder="Enter your email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                  />
-                </Form.Group>
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label htmlFor="email">Email Address</label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            required
+          />
+        </div>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Password</Form.Label>
-                  <div className="position-relative">
-                    <Form.Control
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      placeholder="Enter your password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      required
-                    />
-                    <Button
-                      variant="link"
-                      className="position-absolute end-0 top-50 translate-middle-y border-0 bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                      style={{ zIndex: 10 }}
-                    >
-                      {showPassword ? (
-                        <EyeSlashIcon style={{ width: '20px', height: '20px' }} className="text-muted" />
-                      ) : (
-                        <EyeIcon style={{ width: '20px', height: '20px' }} className="text-muted" />
-                      )}
-                    </Button>
-                  </div>
-                </Form.Group>
+        <div className="form-group">
+          <label htmlFor="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            required
+          />
+        </div>
 
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="w-100"
-                  disabled={loading}
-                >
-                  {loading ? 'Signing in...' : 'Sign in'}
-                </Button>
-              </Form>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+        <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%' }}>
+          {loading ? 'Signing in...' : 'Sign In'}
+        </button>
+      </form>
+
+      <button 
+        onClick={handleDemoLogin} 
+        disabled={loading}
+        className="btn btn-secondary"
+        style={{ width: '100%', marginTop: '1rem' }}
+      >
+        Try Demo Account
+      </button>
+
+      <p style={{ marginTop: '2rem', textAlign: 'center', marginBottom: 0 }}>
+        Don't have an account? <Link to="/register">Create one</Link>
+      </p>
+    </div>
   );
 };
 

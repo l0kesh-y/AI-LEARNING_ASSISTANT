@@ -1,407 +1,261 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Form, Modal, Badge, Spinner, Alert } from 'react-bootstrap';
 import axios from 'axios';
-import {
-  DocumentTextIcon,
-  PlusIcon,
-  MagnifyingGlassIcon,
-  TrashIcon,
-  EyeIcon,
-  HeartIcon,
-  CloudArrowUpIcon
-} from '@heroicons/react/24/outline';
-import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
+import { FileText, Upload, Search, Trash2, Eye } from 'lucide-react';
+import { API_URL } from '../../config/api';
 
 const Documents = () => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState({ uploadLimit: 5, currentCount: 0, remaining: 5 });
-
-  const fetchDocuments = useCallback(async () => {
-    try {
-      const [docsRes, statusRes] = await Promise.all([
-        axios.get('/documents', { params: { search: searchTerm } }),
-        axios.get('/documents/upload-status')
-      ]);
-      setDocuments(docsRes.data.documents);
-      setUploadStatus(statusRes.data);
-    } catch (error) {
-      console.error('Failed to fetch documents:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [searchTerm]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [title, setTitle] = useState('');
 
   useEffect(() => {
     fetchDocuments();
-  }, [fetchDocuments]);
+  }, []);
 
-  const handleUpload = async (file, title, tags) => {
+  const fetchDocuments = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const { data } = await axios.get(`${API_URL}/documents`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDocuments(data.documents || []);
+    } catch (error) {
+      console.error('Fetch documents error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    setSelectedFile(file);
+    if (file && !title) {
+      setTitle(file.name.replace('.pdf', ''));
+    }
+  };
+
+  const handleUpload = async (e) => {
+    e.preventDefault();
+    if (!selectedFile) return;
+
     setUploading(true);
     const formData = new FormData();
-    formData.append('pdf', file);
+    formData.append('pdf', selectedFile);
     formData.append('title', title);
-    formData.append('tags', tags);
 
     try {
-      await axios.post('/documents/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/documents/upload`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
       });
       setShowUploadModal(false);
+      setSelectedFile(null);
+      setTitle('');
       fetchDocuments();
     } catch (error) {
-      console.error('Upload failed:', error);
-      const msg = error.response?.data?.message || 'Upload failed. Please try again.';
-      alert(msg);
+      alert(error.response?.data?.message || 'Upload failed');
     } finally {
       setUploading(false);
     }
   };
 
-  const toggleFavorite = async (docId, currentFavorite) => {
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this document?')) return;
+
     try {
-      await axios.put(`/documents/${docId}`, {
-        isFavorite: !currentFavorite
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_URL}/documents/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       fetchDocuments();
     } catch (error) {
-      console.error('Failed to toggle favorite:', error);
+      alert('Delete failed');
     }
   };
 
-  const deleteDocument = async (docId) => {
-    if (window.confirm('Are you sure you want to delete this document?')) {
-      try {
-        await axios.delete(`/documents/${docId}`);
-        fetchDocuments();
-      } catch (error) {
-        console.error('Failed to delete document:', error);
-      }
-    }
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+  const filteredDocuments = documents.filter(doc =>
+    doc.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loading) {
     return (
-      <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
-        <Spinner animation="border" variant="primary" />
-      </Container>
+      <div className="main-content">
+        <p>Loading your documents...</p>
+      </div>
     );
   }
 
   return (
-    <Container fluid>
-      {/* Header */}
-      <Row className="mb-4">
-        <Col>
-          <div className="d-flex justify-content-between align-items-center">
-            <div>
-              <h1 className="h2 fw-bold text-dark mb-1">Documents</h1>
-              <p className="text-muted mb-0">Upload and manage your study materials</p>
-            </div>
-            <div className="d-flex align-items-center gap-3">
-              <div className="text-end">
-                <div className="small text-muted">Upload limit</div>
-                <div className="d-flex align-items-center gap-1">
-                  {Array.from({ length: uploadStatus.uploadLimit }).map((_, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: 10, height: 10, borderRadius: '50%',
-                        backgroundColor: i < uploadStatus.currentCount ? '#0d6efd' : '#dee2e6'
-                      }}
-                    />
-                  ))}
-                  <span className="small text-muted ms-1">
-                    {uploadStatus.currentCount}/{uploadStatus.uploadLimit}
-                  </span>
-                </div>
-              </div>
-              <Button
-                variant="primary"
-                onClick={() => setShowUploadModal(true)}
-                className="d-flex align-items-center"
-                disabled={uploadStatus.remaining === 0}
-              >
-                <PlusIcon className="me-2" style={{ width: '20px', height: '20px' }} />
-                Upload PDF
-              </Button>
-            </div>
-          </div>
-        </Col>
-      </Row>
+    <div className="main-content">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1>Documents</h1>
+          <p>Upload and manage your PDFs for AI-powered learning</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => setShowUploadModal(true)}>
+          <Upload size={18} />
+          <span>Upload PDF</span>
+        </button>
+      </div>
 
-      {/* Upload limit warning */}
-      {uploadStatus.remaining === 0 && (
-        <Row className="mb-3">
-          <Col>
-            <Alert variant="warning" className="mb-0">
-              You have reached your upload limit of {uploadStatus.uploadLimit} PDFs. Delete a document to upload a new one.
-            </Alert>
-          </Col>
-        </Row>
-      )}
+      <div className="controls-bar">
+        <div className="search-input-wrapper">
+          <Search />
+          <input
+            type="text"
+            placeholder="Search documents..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
 
-      {/* Search */}
-      <Row className="mb-4">
-        <Col md={6}>
-          <div className="position-relative">
-            <MagnifyingGlassIcon 
-              className="position-absolute text-muted" 
-              style={{ 
-                left: '12px', 
-                top: '50%', 
-                transform: 'translateY(-50%)', 
-                width: '20px', 
-                height: '20px' 
-              }} 
-            />
-            <Form.Control
-              type="text"
-              placeholder="Search documents..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && fetchDocuments()}
-              style={{ paddingLeft: '45px' }}
-            />
-          </div>
-        </Col>
-      </Row>
-
-      {/* Documents Grid */}
-      <Row>
-        {documents.map((doc) => (
-          <Col key={doc._id} xs={12} md={6} lg={4} className="mb-4">
-            <Card className="h-100 card-hover">
-              <Card.Body>
-                <div className="d-flex justify-content-between align-items-start mb-3">
-                  <DocumentTextIcon className="text-primary" style={{ width: '32px', height: '32px' }} />
-                  <div className="d-flex gap-2">
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="p-1 text-muted"
-                      onClick={() => toggleFavorite(doc._id, doc.isFavorite)}
-                    >
-                      {doc.isFavorite ? (
-                        <HeartSolidIcon className="text-danger" style={{ width: '20px', height: '20px' }} />
-                      ) : (
-                        <HeartIcon style={{ width: '20px', height: '20px' }} />
-                      )}
-                    </Button>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="p-1 text-muted"
-                      onClick={() => deleteDocument(doc._id)}
-                    >
-                      <TrashIcon style={{ width: '20px', height: '20px' }} />
-                    </Button>
-                  </div>
-                </div>
-
-                <h5 className="card-title mb-3" style={{ minHeight: '3rem' }}>
-                  {doc.title}
-                </h5>
-
-                <div className="mb-3">
-                  <div className="d-flex justify-content-between small text-muted mb-1">
-                    <span>Size:</span>
-                    <span>{formatFileSize(doc.fileSize)}</span>
-                  </div>
-                  <div className="d-flex justify-content-between small text-muted mb-1">
-                    <span>Pages:</span>
-                    <span>{doc.pageCount}</span>
-                  </div>
-                  <div className="d-flex justify-content-between small text-muted">
-                    <span>Uploaded:</span>
-                    <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-
-                {doc.tags && doc.tags.length > 0 && (
-                  <div className="mb-3">
-                    {doc.tags.map((tag, index) => (
-                      <Badge key={index} bg="primary" className="me-1 mb-1">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-
-                <Link to={`/documents/${doc._id}`} className="text-decoration-none">
-                  <Button variant="primary" className="w-100 d-flex align-items-center justify-content-center">
-                    <EyeIcon className="me-2" style={{ width: '16px', height: '16px' }} />
-                    View Document
-                  </Button>
-                </Link>
-              </Card.Body>
-            </Card>
-          </Col>
-        ))}
-      </Row>
-
-      {documents.length === 0 && (
-        <div className="text-center py-5">
-          <DocumentTextIcon className="text-muted mx-auto mb-3" style={{ width: '48px', height: '48px' }} />
-          <h5 className="text-muted">No documents</h5>
-          <p className="text-muted mb-4">
-            Get started by uploading your first PDF document.
-          </p>
-          <Button
-            variant="primary"
-            onClick={() => setShowUploadModal(true)}
-            className="d-flex align-items-center mx-auto"
-          >
-            <PlusIcon className="me-2" style={{ width: '20px', height: '20px' }} />
-            Upload PDF
-          </Button>
+      {filteredDocuments.length === 0 ? (
+        <div className="empty-state">
+          <FileText size={64} />
+          <h3>No documents yet</h3>
+          <p>Upload your first PDF to get started with AI-powered learning</p>
+          <button className="btn btn-primary" onClick={() => setShowUploadModal(true)}>
+            <Upload size={18} />
+            <span>Upload PDF</span>
+          </button>
+        </div>
+      ) : (
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Pages</th>
+                <th>Size</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredDocuments.map((doc) => (
+                <tr key={doc._id}>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <FileText size={18} style={{ color: '#9CA3AF' }} />
+                      <span className="table-title">{doc.title}</span>
+                    </div>
+                  </td>
+                  <td>{doc.pageCount} pages</td>
+                  <td>{(doc.fileSize / 1024 / 1024).toFixed(2)} MB</td>
+                  <td>{new Date(doc.createdAt).toLocaleDateString()}</td>
+                  <td>
+                    <div className="table-actions">
+                      <Link to={`/documents/${doc._id}`} className="btn btn-ghost" style={{ padding: '0.375rem 0.5rem' }}>
+                        <Eye size={16} />
+                      </Link>
+                      <button 
+                        onClick={() => handleDelete(doc._id)} 
+                        className="btn btn-danger"
+                        style={{ padding: '0.375rem 0.5rem' }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* Upload Modal */}
-      <UploadModal
-        show={showUploadModal}
-        onHide={() => setShowUploadModal(false)}
-        onUpload={handleUpload}
-        uploading={uploading}
-      />
-    </Container>
-  );
-};
+      {showUploadModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-header">
+              <h2>Upload Document</h2>
+              <button 
+                className="modal-close" 
+                onClick={() => {
+                  setShowUploadModal(false);
+                  setSelectedFile(null);
+                  setTitle('');
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={handleUpload}>
+                <div className="form-group">
+                  <label>PDF File</label>
+                  {!selectedFile ? (
+                    <label className="file-upload-area">
+                      <Upload size={40} />
+                      <p className="file-upload-text">
+                        <span>Click to upload</span> or drag and drop
+                      </p>
+                      <p style={{ fontSize: '0.8125rem', color: '#9CA3AF', marginTop: '0.5rem' }}>
+                        PDF files only
+                      </p>
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleFileSelect}
+                        style={{ display: 'none' }}
+                        required
+                      />
+                    </label>
+                  ) : (
+                    <div className="file-selected">
+                      <FileText size={18} />
+                      <span>{selectedFile.name}</span>
+                    </div>
+                  )}
+                </div>
 
-const UploadModal = ({ show, onHide, onUpload, uploading }) => {
-  const [file, setFile] = useState(null);
-  const [title, setTitle] = useState('');
-  const [tags, setTags] = useState('');
-  const [dragOver, setDragOver] = useState(false);
-
-  const handleFileSelect = (selectedFile) => {
-    if (selectedFile && selectedFile.type === 'application/pdf') {
-      setFile(selectedFile);
-      if (!title) {
-        setTitle(selectedFile.name.replace('.pdf', ''));
-      }
-    } else {
-      alert('Please select a PDF file');
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    const droppedFile = e.dataTransfer.files[0];
-    handleFileSelect(droppedFile);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (file && title) {
-      onUpload(file, title, tags);
-    }
-  };
-
-  return (
-    <Modal show={show} onHide={onHide} centered>
-      <Modal.Header closeButton>
-        <Modal.Title>Upload PDF Document</Modal.Title>
-      </Modal.Header>
-      <Modal.Body>
-        <Form onSubmit={handleSubmit}>
-          {/* File Drop Zone */}
-          <div
-            className={`file-upload-area mb-3 ${dragOver ? 'dragover' : ''}`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-          >
-            {file ? (
-              <div className="text-center">
-                <DocumentTextIcon className="text-primary mx-auto mb-2" style={{ width: '48px', height: '48px' }} />
-                <p className="fw-medium mb-1">{file.name}</p>
-                <small className="text-muted">
-                  {(file.size / 1024 / 1024).toFixed(2)} MB
-                </small>
-              </div>
-            ) : (
-              <div className="text-center">
-                <CloudArrowUpIcon className="text-muted mx-auto mb-2" style={{ width: '48px', height: '48px' }} />
-                <p className="mb-2">
-                  Drop your PDF here or{' '}
-                  <Form.Label className="text-primary" style={{ cursor: 'pointer' }}>
-                    browse
-                    <Form.Control
-                      type="file"
-                      accept=".pdf"
-                      className="d-none"
-                      onChange={(e) => handleFileSelect(e.target.files[0])}
-                    />
-                  </Form.Label>
-                </p>
-              </div>
-            )}
+                <div className="form-group">
+                  <label htmlFor="title">Document Title</label>
+                  <input
+                    id="title"
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Enter document title"
+                    required
+                  />
+                </div>
+              </form>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowUploadModal(false);
+                  setSelectedFile(null);
+                  setTitle('');
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-primary" 
+                onClick={handleUpload}
+                disabled={uploading || !selectedFile}
+              >
+                {uploading ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
           </div>
-
-          {/* Title Input */}
-          <Form.Group className="mb-3">
-            <Form.Label>Document Title</Form.Label>
-            <Form.Control
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter document title"
-            />
-          </Form.Group>
-
-          {/* Tags Input */}
-          <Form.Group className="mb-3">
-            <Form.Label>Tags (optional)</Form.Label>
-            <Form.Control
-              type="text"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="Enter tags separated by commas"
-            />
-          </Form.Group>
-        </Form>
-      </Modal.Body>
-      <Modal.Footer>
-        <Button variant="secondary" onClick={onHide} disabled={uploading}>
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleSubmit}
-          disabled={!file || !title || uploading}
-        >
-          {uploading ? (
-            <>
-              <Spinner animation="border" size="sm" className="me-2" />
-              Uploading...
-            </>
-          ) : (
-            'Upload'
-          )}
-        </Button>
-      </Modal.Footer>
-    </Modal>
+        </div>
+      )}
+    </div>
   );
 };
 
