@@ -30,23 +30,6 @@ const Login = () => {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      const result = await login('demo@example.com', 'demo123456');
-      if (result.success) {
-        navigate('/documents');
-      } else {
-        setError('Demo account not found');
-      }
-    } catch (err) {
-      setError('Demo login failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="auth-container">
       <div className="auth-logo">
@@ -91,15 +74,6 @@ const Login = () => {
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
       </form>
-
-      <button 
-        onClick={handleDemoLogin} 
-        disabled={loading}
-        className="btn btn-secondary"
-        style={{ width: '100%', marginTop: '1rem' }}
-      >
-        Try Demo Account
-      </button>
 
       <p style={{ marginTop: '2rem', textAlign: 'center', marginBottom: 0 }}>
         Don't have an account? <Link to="/register">Create one</Link>
